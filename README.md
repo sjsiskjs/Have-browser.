@@ -1,9 +1,4 @@
-<p align="center">
-  <img src="IMG-20260801-WA6769.jpg" alt="Have Browser Logo" width="200" />
-</p>
-
-
-# Have Browser 🚀
+**Have Browser** 🚀
 
 **Have Browser** is a custom web browser built on top of the **Firefox Extended Support Release (ESR)** engine, developed with a strong focus on user privacy and interface customization.
 
