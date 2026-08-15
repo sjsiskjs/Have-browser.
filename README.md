@@ -1,18 +1,27 @@
-![Firefox Browser](./docs/readme/readme-banner.svg)
+<p align="center">
+  <img src="IMG-20260801-WA6769.jpg" alt="Have Browser Logo" width="200"/>
+</p>
 
-[Firefox](https://firefox.com/) is a fast, reliable and private web browser from the non-profit [Mozilla organization](https://mozilla.org/).
 
-### Contributing
+# Have Browser 🚀
 
-To learn how to contribute to Firefox read the [Firefox Contributors' Quick Reference document](https://firefox-source-docs.mozilla.org/contributing/contribution_quickref.html).
+**Have Browser** is a custom web browser built on top of the **Firefox Extended Support Release (ESR)** engine, developed with a strong focus on user privacy and interface customization.
 
-We use [bugzilla.mozilla.org](https://bugzilla.mozilla.org/) as our issue tracker, please file bugs there.
+---
 
-### Resources
+## 🛠️ Project Status & Development
+This is a private repository used for active source code modification and fork compilation.
 
-* [Firefox Source Docs](https://firefox-source-docs.mozilla.org/) is our primary documentation repository
-* Nightly development builds can be downloaded from [Firefox Nightly page](https://www.mozilla.org/firefox/channel/desktop/#nightly)
+### Current Goals:
+- **Custom Branding:** Replacing native logo and wordmark assets within the source code (`mozconfig` and `moz.build`) to integrate the **Have** brand.
+- **Core Privacy:** Tuning and optimizing native security parameters within the Gecko engine.
+- **Clean Interface:** Removing telemetry dependencies and proprietary Mozilla default services.
 
-If you have a question about developing Firefox, and can't find the solution
-on [Firefox Source Docs](https://firefox-source-docs.mozilla.org/), you can try asking your question on Matrix at
-chat.mozilla.org in the [Introduction channel](https://chat.mozilla.org/#/room/#introduction:mozilla.org).
+## ⚙️ Built With
+- **Core Engine:** Firefox ESR
+- **Languages:** C++, Rust, JavaScript, CSS
+
+---
+
+
+*Note: This project is currently under heavy development.*
