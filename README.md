@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="Have Browser Logo" width="200"/>
+  <img src="image_ppDSlY.png" alt="Have Browser Logo" width="200"/>
 </p>
 
 
