@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="image_ppDSlY.png" alt="Have Browser Logo" width="200"/>
+  <img src="image_HnPneh.png" alt="Have Browser Logo" width="200"/>
 </p>
 
 
@@ -25,3 +25,4 @@ This is a private repository used for active source code modification and fork c
 
 
 *Note: This project is currently under heavy development.*
+
