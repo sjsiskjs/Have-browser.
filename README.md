@@ -3,7 +3,6 @@
 </p>
 
 
-
 # Have Browser 🚀
 
 **Have Browser** is a custom web browser built on top of the **Firefox Extended Support Release (ESR)** engine, developed with a strong focus on user privacy and interface customization.
@@ -26,4 +25,3 @@ This is a private repository used for active source code modification and fork c
 
 
 *Note: This project is currently under heavy development.*
-
