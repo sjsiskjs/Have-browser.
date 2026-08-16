@@ -13,10 +13,11 @@ jobs:
         os: [windows-latest, macos-latest, ubuntu-latest]
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          path: 'src' # Forziamo il download in una cartella pulita chiamata src
+      # Sostituito il checkout difettoso con un clone manuale pulito in una cartella specifica
+      - name: Clone Repository Manually
+        shell: bash
+        run: |
+          git clone https://github.com src
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -65,3 +66,4 @@ jobs:
             src/**/dist/*.dmg
             src/**/dist/*.tar.bz2
             src/**/dist/*.deb
+
