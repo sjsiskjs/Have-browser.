@@ -13,11 +13,12 @@ jobs:
         os: [windows-latest, macos-latest, ubuntu-latest]
 
     steps:
-      # 1. Scarica il codice del fork in una cartella pulita (Risolve il bug del punto ".")
+      # 1. Scarica il codice del fork in una cartella personalizzata e pulita
+      # Usiamo una cartella fissa su C: per Windows per aggirare il bug del punto nel nome
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          path: 'browser-source'
+          path: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
 
       # 2. Configura Python per l'ambiente Mozilla
       - name: Set up Python
@@ -30,13 +31,13 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: powershell
         run: |
-          Invoke-WebRequest -Uri "https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe" -OutFile "MozillaBuildSetup.exe"
+          Invoke-WebRequest -Uri "https://mozilla.org" -OutFile "MozillaBuildSetup.exe"
           Start-Process -FilePath ".\MozillaBuildSetup.exe" -ArgumentList "/S" -Wait
 
       # 4. Ottimizza le opzioni di compilazione (Abilita l'Artifact Build per evitare blocchi)
       - name: Configure Build (mozconfig)
         shell: bash
-        working-directory: browser-source
+        working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
         run: |
           echo "ac_add_options --enable-optimize" > mozconfig
           echo "ac_add_options --disable-debug" >> mozconfig
@@ -46,7 +47,7 @@ jobs:
       # 5. Compila l'interfaccia e le modifiche del tuo fork
       - name: Compile Browser
         shell: bash
-        working-directory: browser-source
+        working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             exec /c/mozilla-build/start-shell.bat ./mach build
@@ -57,7 +58,7 @@ jobs:
       # 6. Impacchetta i file negli installer finali (.exe, .dmg, .deb)
       - name: Create Installer Package
         shell: bash
-        working-directory: browser-source
+        working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             exec /c/mozilla-build/start-shell.bat ./mach package
@@ -71,8 +72,8 @@ jobs:
         with:
           name: Have-Browser-installer-${{ matrix.os }}
           path: |
+            C:/build-dir/**/dist/*.installer.exe
             browser-source/**/dist/*.installer.exe
             browser-source/**/dist/*.dmg
             browser-source/**/dist/*.tar.bz2
             browser-source/**/dist/*.deb
-
