@@ -1,0 +1,135 @@
+/* ==========================================
+   HAVE BROWSER - TEMA AMOLED INIZIALE
+   ========================================== */
+
+/* Colora di nero totale la barra in alto, le schede e la barra dei preferiti */
+#navigator-toolbox, 
+#tabbrowser-tabs, 
+.tab-background, 
+#nav-bar,
+#PersonalToolbar {
+    background: #000000 !important;
+    background-color: #000000 !important;
+}
+
+/* Rende il testo delle schede e dei preferiti bianco */
+.tab-label, .tab-text, #PersonalToolbar text, #PersonalToolbar label {
+    color: #ffffff !important;
+}
+
+/* Nasconde l'icona di Firefox dalle nuove schede vuote */
+.tabbrowser-tab[label="New Tab"] .tab-icon-image,
+.tabbrowser-tab[label="Nuova scheda"] .tab-icon-image {
+    display: none !important;
+}
+
+/* Colora di nero lo sfondo dei menu a tendina e dei pannelli */
+panel, menupopup, .panel-arrowcontent, #appMenu-popup .panel-subview-body,
+#appMenu-popup panelview, #appMenu-popup toolbarbutton, .subviewbutton {
+    background: #000000 !important;
+    background-color: #000000 !important;
+    color: #ffffff !important;
+}
+
+/* Bordino viola per i menu ed effetto hover quando passi il mouse */
+.panel-arrowcontent { border: 1px solid #7A22A7 !important; }
+#appMenu-popup toolbarbutton:hover, .subviewbutton:hover {
+    background-color: #7A22A7 !important;
+    color: #ffffff !important;
+}
+
+/* ==========================================
+   FORZATURA BARRA DEGLI INDIRIZZI NERA ANTI-BUG
+   ========================================== */
+:root {
+    --urlbar-box-bgcolor: #000000 !important;
+    --urlbar-background-color: #000000 !important;
+    --autocomplete-popup-background: #000000 !important;
+}
+
+#urlbar, #urlbar-background, #urlbar-input-container, .urlbar-input-box {
+    background-color: #000000 !important;
+    background: #000000 !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+}
+
+/* Applica il bordino viola intorno alla barra di ricerca */
+#urlbar-background {
+    border: 1px solid #7A22A7 !important;
+}
+
+.urlbar-input::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Rimuove l'icona della volpe e la scritta Firefox dentro la barra URL */
+#identity-box[pageproxystate="valid"].identity-box-button,
+#pageaction-urlbar-search-mode,
+.search-one-offs,
+#urlbar-search-mode-indicator {
+    display: none !important;
+}
+
+/* Se la scritta "Firefox" appare come testo di placeholder vuoto nell'URL */
+#urlbar-input::placeholder {
+    color: transparent !important;
+}
+
+/* 1. Rimuove la scritta "Firefox" (Titolo della finestra) */
+#titlebar {
+    display: none !important;
+}
+
+/* 2. Rimuove lo sfondo grigio/viola scuro dalla barra di navigazione */
+#nav-bar {
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* ==========================================
+   SOSTITUZIONE PERMANENTE ICONA E SCRITTA SCHEDE
+   ========================================== */
+
+/* Nasconde l'icona nativa della volpe sulle schede di configurazione */
+.tabbrowser-tab[label*="Firefox"] .tab-icon-image,
+.tabbrowser-tab[label*="Preferences"] .tab-icon-image,
+.tabbrowser-tab[label*="Impostazioni"] .tab-icon-image,
+.tab-icon-image[src*="brand-logo"] {
+    display: none !important;
+}
+
+/* Inietta il tuo logo viola al posto della vecchia icona */
+.tabbrowser-tab[label*="Firefox"] .tab-content::before,
+.tabbrowser-tab[label*="Preferences"] .tab-content::before,
+.tabbrowser-tab[label*="Impostazioni"] .tab-content::before {
+    content: "" !important;
+    display: inline-block !important;
+    width: 16px !important;
+    height: 16px !important;
+    margin-right: 6px !important;
+    background-image: url("logo.png") !important;
+    background-size: contain !important;
+    background-repeat: no-repeat !important;
+    align-self: center !important;
+}
+
+/* Collassa il testo originale "Firefox" per non farlo vedere */
+.tabbrowser-tab[label*="Firefox"] .tab-label,
+.tabbrowser-tab[label*="Preferences"] .tab-label,
+.tabbrowser-tab[label*="Impostazioni"] .tab-label {
+    visibility: collapse !important;
+}
+
+/* Scrive in modo definitivo "have" accanto al tuo logo viola */
+.tabbrowser-tab[label*="Firefox"] .tab-content::after,
+.tabbrowser-tab[label*="Preferences"] .tab-content::after,
+.tabbrowser-tab[label*="Impostazioni"] .tab-content::after {
+    content: "have" !important;
+    display: inline-block !important;
+    color: #ffffff !important;
+    font-size: 12px !important;
+    font-family: sans-serif !important;
+    align-self: center !important;
+}
