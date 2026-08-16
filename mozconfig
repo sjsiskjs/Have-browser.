@@ -1,0 +1,9 @@
+# Tells the build system to compile the Desktop Browser
+ac_add_options --enable-project=browser
+
+# Forces the build system to use your custom Have branding files
+ac_add_options --with-branding=browser/branding/nightly
+
+# Optimize the build for execution
+ac_add_options --enable-optimize
+ac_add_options --disable-debug
