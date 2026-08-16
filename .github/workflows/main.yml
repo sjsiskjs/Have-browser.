@@ -13,11 +13,11 @@ jobs:
         os: [windows-latest, macos-latest, ubuntu-latest]
 
     steps:
-      # Sostituito il checkout difettoso con un clone manuale pulito in una cartella specifica
-      - name: Clone Repository Manually
-        shell: bash
-        run: |
-          git clone https://github.com src
+      # Utilizziamo l'azione ufficiale ma forzando la cartella principale pulita senza punti
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: 'browser-source'
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -33,13 +33,13 @@ jobs:
 
       - name: Bootstrap Environment
         shell: bash
-        working-directory: src
+        working-directory: browser-source
         run: |
           ./mach bootstrap --application-choice="Firefox for Desktop" --no-interactive
 
       - name: Configure Build (mozconfig)
         shell: bash
-        working-directory: src
+        working-directory: browser-source
         run: |
           echo "ac_add_options --enable-optimize" > mozconfig
           echo "ac_add_options --disable-debug" >> mozconfig
@@ -47,13 +47,13 @@ jobs:
 
       - name: Compile Browser
         shell: bash
-        working-directory: src
+        working-directory: browser-source
         run: |
           ./mach build
 
       - name: Create Installer Package
         shell: bash
-        working-directory: src
+        working-directory: browser-source
         run: |
           ./mach package
 
@@ -62,8 +62,7 @@ jobs:
         with:
           name: Have-Browser-installer-${{ matrix.os }}
           path: |
-            src/**/dist/*.installer.exe
-            src/**/dist/*.dmg
-            src/**/dist/*.tar.bz2
-            src/**/dist/*.deb
-
+            browser-source/**/dist/*.installer.exe
+            browser-source/**/dist/*.dmg
+            browser-source/**/dist/*.tar.bz2
+            browser-source/**/dist/*.deb
