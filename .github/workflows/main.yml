@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          path: 'src' # Forziamo il download in una cartella pulita chiamata src
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -30,11 +32,13 @@ jobs:
 
       - name: Bootstrap Environment
         shell: bash
+        working-directory: src
         run: |
           ./mach bootstrap --application-choice="Firefox for Desktop" --no-interactive
 
       - name: Configure Build (mozconfig)
         shell: bash
+        working-directory: src
         run: |
           echo "ac_add_options --enable-optimize" > mozconfig
           echo "ac_add_options --disable-debug" >> mozconfig
@@ -42,11 +46,13 @@ jobs:
 
       - name: Compile Browser
         shell: bash
+        working-directory: src
         run: |
           ./mach build
 
       - name: Create Installer Package
         shell: bash
+        working-directory: src
         run: |
           ./mach package
 
@@ -55,7 +61,7 @@ jobs:
         with:
           name: Have-Browser-installer-${{ matrix.os }}
           path: |
-            **/dist/*.installer.exe
-            **/dist/*.dmg
-            **/dist/*.tar.bz2
-            **/dist/*.deb
+            src/**/dist/*.installer.exe
+            src/**/dist/*.dmg
+            src/**/dist/*.tar.bz2
+            src/**/dist/*.deb
