@@ -13,30 +13,27 @@ jobs:
         os: [windows-latest, macos-latest, ubuntu-latest]
 
     steps:
-      # Utilizziamo l'azione ufficiale ma forzando la cartella principale pulita senza punti
+      # 1. Scarica il codice del fork in una cartella pulita (Risolve il bug del punto ".")
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           path: 'browser-source'
 
+      # 2. Configura Python per l'ambiente Mozilla
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
+      # 3. Scarica i veri MozillaBuild Tools per Windows dall'FTP ufficiale
       - name: Install MozillaBuild (Windows)
         if: matrix.os == 'windows-latest'
         shell: powershell
         run: |
-          Invoke-WebRequest -Uri "https://mozilla.org" -OutFile "MozillaBuildSetup.exe"
+          Invoke-WebRequest -Uri "https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe" -OutFile "MozillaBuildSetup.exe"
           Start-Process -FilePath ".\MozillaBuildSetup.exe" -ArgumentList "/S" -Wait
 
-      - name: Bootstrap Environment
-        shell: bash
-        working-directory: browser-source
-        run: |
-          ./mach bootstrap --application-choice="Firefox for Desktop" --no-interactive
-
+      # 4. Ottimizza le opzioni di compilazione (Abilita l'Artifact Build per evitare blocchi)
       - name: Configure Build (mozconfig)
         shell: bash
         working-directory: browser-source
@@ -44,19 +41,31 @@ jobs:
           echo "ac_add_options --enable-optimize" > mozconfig
           echo "ac_add_options --disable-debug" >> mozconfig
           echo "ac_add_options --enable-project=browser" >> mozconfig
+          echo "ac_add_options --enable-artifact-builds" >> mozconfig
 
+      # 5. Compila l'interfaccia e le modifiche del tuo fork
       - name: Compile Browser
         shell: bash
         working-directory: browser-source
         run: |
-          ./mach build
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            exec /c/mozilla-build/start-shell.bat ./mach build
+          else
+            ./mach build
+          fi
 
+      # 6. Impacchetta i file negli installer finali (.exe, .dmg, .deb)
       - name: Create Installer Package
         shell: bash
         working-directory: browser-source
         run: |
-          ./mach package
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            exec /c/mozilla-build/start-shell.bat ./mach package
+          else
+            ./mach package
+          fi
 
+      # 7. Salva gli installer pronti da scaricare per ogni sistema operativo
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -66,3 +75,4 @@ jobs:
             browser-source/**/dist/*.dmg
             browser-source/**/dist/*.tar.bz2
             browser-source/**/dist/*.deb
+
