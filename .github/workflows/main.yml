@@ -55,7 +55,7 @@ jobs:
         with:
           name: Have-Browser-installer-${{ matrix.os }}
           path: |
-            obj*/**/*.installer.exe
-            obj*/**/*.dmg
-            obj*/**/*.tar.bz2
-            obj*/**/*.deb
+            **/dist/*.installer.exe
+            **/dist/*.dmg
+            **/dist/*.tar.bz2
+            **/dist/*.deb
