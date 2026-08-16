@@ -1,8 +1,6 @@
 name: Build and Package Browser
-
 on:
   workflow_dispatch:
-
 jobs:
   build:
     name: Build on ${{ matrix.os }}
@@ -11,10 +9,21 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
-
     steps:
+      # 0. Libera spazio extra sul runner (solo Windows, dove lo spazio è più critico)
+      - name: Free disk space (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          # Rimuove tool preinstallati non necessari per liberare spazio
+          Remove-Item -Recurse -Force "C:\Program Files\dotnet" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "C:\Program Files (x86)\Android" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "C:\hostedtoolcache\windows\Java_Temurin-Hotspot_jdk" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "C:\ghcup" -ErrorAction SilentlyContinue
+          Get-PSDrive C | Select-Object Used,Free
+
       # 1. Scarica il codice del fork in una cartella personalizzata e pulita
-      # Usiamo una cartella fissa su C: per Windows per aggirare il bug del punto nel nome
+      # Cartella fissa su C: per Windows per aggirare il bug del punto nel nome repo
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -30,11 +39,23 @@ jobs:
       - name: Install MozillaBuild (Windows)
         if: matrix.os == 'windows-latest'
         shell: powershell
+        working-directory: C:\build-dir
         run: |
-          Invoke-WebRequest -Uri "https://mozilla.org" -OutFile "MozillaBuildSetup.exe"
+          Invoke-WebRequest -Uri "https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe" -OutFile "MozillaBuildSetup.exe"
           Start-Process -FilePath ".\MozillaBuildSetup.exe" -ArgumentList "/S" -Wait
 
-      # 4. Ottimizza le opzioni di compilazione (Abilita l'Artifact Build per evitare blocchi)
+      # 4. Bootstrap: installa Rust, clang e le altre dipendenze necessarie a mach
+      - name: Mach Bootstrap
+        shell: bash
+        working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
+        run: |
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            exec /c/mozilla-build/start-shell.bat ./mach bootstrap --application-choice=browser --no-interactive
+          else
+            ./mach bootstrap --application-choice=browser --no-interactive
+          fi
+
+      # 5. Ottimizza le opzioni di compilazione (Abilita l'Artifact Build per evitare blocchi)
       - name: Configure Build (mozconfig)
         shell: bash
         working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
@@ -44,7 +65,7 @@ jobs:
           echo "ac_add_options --enable-project=browser" >> mozconfig
           echo "ac_add_options --enable-artifact-builds" >> mozconfig
 
-      # 5. Compila l'interfaccia e le modifiche del tuo fork
+      # 6. Compila l'interfaccia e le modifiche del tuo fork
       - name: Compile Browser
         shell: bash
         working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
@@ -55,7 +76,7 @@ jobs:
             ./mach build
           fi
 
-      # 6. Impacchetta i file negli installer finali (.exe, .dmg, .deb)
+      # 7. Impacchetta i file negli installer finali (.exe, .dmg, .deb)
       - name: Create Installer Package
         shell: bash
         working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
@@ -66,7 +87,7 @@ jobs:
             ./mach package
           fi
 
-      # 7. Salva gli installer pronti da scaricare per ogni sistema operativo
+      # 8. Salva gli installer pronti da scaricare per ogni sistema operativo
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
         with:
