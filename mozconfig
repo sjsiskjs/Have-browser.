@@ -1,3 +1,6 @@
+# Sets the official executable and package download name to have
+ac_add_options --with-app-name=have
+
 # Tells the build system to compile the Desktop Browser
 ac_add_options --enable-project=browser
 
@@ -7,3 +10,4 @@ ac_add_options --with-branding=browser/branding/nightly
 # Optimize the build for execution
 ac_add_options --enable-optimize
 ac_add_options --disable-debug
+
