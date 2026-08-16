@@ -1,1 +1,37 @@
+{
+  "policies": {
+    "SearchEngines": {
+      "PreventInstalls": false,
+      "RemoveRenderedEngineOrder": ["Google", "Bing", "Amazon.com", "eBay", "Wikipedia (en)"],
+      "Default": "Brave Search",
+      "Add": [
+        {
+          "Name": "Brave Search",
+          "URLTemplate": "https://brave.com{searchTerms}",
+          "Method": "GET",
+          "IconURL": "https://brave.com"
+        },
+        {
+          "Name": "DuckDuckGo",
+          "URLTemplate": "https://duckduckgo.com{searchTerms}",
+          "Method": "GET",
+          "IconURL": "https://duckduckgo.com"
+        },
+        {
+          "Name": "Startpage",
+          "URLTemplate": "https://startpage.com{searchTerms}",
+          "Method": "GET",
+          "IconURL": "https://startpage.com"
+        }
+      ]
+    },
+    "DisableTelemetry": true,
+    "DisableFirefoxStudies": true,
+    "DisableCrashReporter": true,
+    "DisablePocket": true,
+    "DisableFirefoxAccounts": true,
+    "OverrideFirstRunPage": "",
+    "OverridePostUpdatePage": ""
+  }
+}
 
