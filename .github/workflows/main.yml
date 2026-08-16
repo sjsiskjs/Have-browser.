@@ -1,0 +1,61 @@
+name: Build and Package Browser
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install MozillaBuild (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://mozilla.org" -OutFile "MozillaBuildSetup.exe"
+          Start-Process -FilePath ".\MozillaBuildSetup.exe" -ArgumentList "/S" -Wait
+
+      - name: Bootstrap Environment
+        shell: bash
+        run: |
+          ./mach bootstrap --application-choice="Firefox for Desktop" --no-interactive
+
+      - name: Configure Build (mozconfig)
+        shell: bash
+        run: |
+          echo "ac_add_options --enable-optimize" > mozconfig
+          echo "ac_add_options --disable-debug" >> mozconfig
+          echo "ac_add_options --enable-project=browser" >> mozconfig
+
+      - name: Compile Browser
+        shell: bash
+        run: |
+          ./mach build
+
+      - name: Create Installer Package
+        shell: bash
+        run: |
+          ./mach package
+
+      - name: Upload Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Have-Browser-installer-${{ matrix.os }}
+          path: |
+            obj*/**/*.installer.exe
+            obj*/**/*.dmg
+            obj*/**/*.tar.bz2
+            obj*/**/*.deb
