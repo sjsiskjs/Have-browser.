@@ -45,26 +45,33 @@ jobs:
           Invoke-WebRequest -Uri "https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe" -OutFile "MozillaBuildSetup.exe"
           Start-Process -FilePath ".\MozillaBuildSetup.exe" -ArgumentList "/S" -Wait
 
-      # 4. Bootstrap: installa Rust, clang e le altre dipendenze necessarie a mach
+      # 4. Sistema il conflitto pyyaml prima del bootstrap
+      - name: Fix Python Dependencies
+        shell: bash
+        working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install --force-reinstall pyyaml==6.0.3
+
+      # 5. Bootstrap: installa Rust, clang e le altre dipendenze necessarie a mach
       - name: Mach Bootstrap
         shell: bash
         working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            exec /c/mozilla-build/start-shell.bat ./mach --no-interactive bootstrap --application-choice=browser
+            exec /c/mozilla-build/start-shell.bat yes | ./mach bootstrap --application-choice=browser --no-system-changes
           else
-            ./mach --no-interactive bootstrap --application-choice=browser
+            yes | ./mach bootstrap --application-choice=browser --no-system-changes
           fi
 
-      # 5. Ottimizza le opzioni di compilazione (Abilita l'Artifact Build per evitare blocchi)
+      # 6. Ottimizza le opzioni di compilazione (build completa, NIENTE artifact builds per ESR non recentissime)
       - name: Configure Build (mozconfig)
         shell: bash
         working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
         run: |
-          echo "ac_add_options --enable-optimize" > mozconfig
-          echo "ac_add_options --disable-debug" >> mozconfig
+          echo "ac_add_options --enable-release" > mozconfig
+          echo "ac_add_options --disable-tests" >> mozconfig
           echo "ac_add_options --enable-project=browser" >> mozconfig
-          echo "ac_add_options --enable-artifact-builds" >> mozconfig
 
       # 6. Compila l'interfaccia e le modifiche del tuo fork
       - name: Compile Browser
