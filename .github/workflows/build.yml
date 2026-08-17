@@ -59,9 +59,9 @@ jobs:
         working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            exec /c/mozilla-build/start-shell.bat yes | ./mach bootstrap --application-choice=browser --no-system-changes
+            (yes || true) | /c/mozilla-build/start-shell.bat ./mach bootstrap --application-choice=browser --no-system-changes
           else
-            yes | ./mach bootstrap --application-choice=browser --no-system-changes
+            yes 2>/dev/null | ./mach bootstrap --application-choice=browser --no-system-changes || true
           fi
 
       # 6. Ottimizza le opzioni di compilazione (build completa, NIENTE artifact builds per ESR non recentissime)
