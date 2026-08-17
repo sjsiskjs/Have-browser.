@@ -1,6 +1,8 @@
 name: Build and Package Browser
+
 on:
   workflow_dispatch:
+
 jobs:
   build:
     name: Build on ${{ matrix.os }}
@@ -9,34 +11,33 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
+    
     steps:
-      # 0. Libera spazio extra sul runner (solo Windows, dove lo spazio è più critico)
+      # 0. Libera spazio (Windows)
       - name: Free disk space (Windows)
         if: matrix.os == 'windows-latest'
         shell: powershell
-        working-directory: C:\
         run: |
-          # Rimuove tool preinstallati non necessari per liberare spazio
           Remove-Item -Recurse -Force "C:\Program Files\dotnet" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "C:\Program Files (x86)\Android" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "C:\hostedtoolcache\windows\Java_Temurin-Hotspot_jdk" -ErrorAction SilentlyContinue
-          Remove-Item -Recurse -Force "C:\ghcup" -ErrorAction SilentlyContinue
           Get-PSDrive C | Select-Object Used,Free
 
-      # 1. Scarica il codice del fork in una cartella personalizzata e pulita
-      # Cartella fissa su C: per Windows per aggirare il bug del punto nel nome repo
+      # 1. Checkout
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           path: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
+          submodules: recursive
 
-      # 2. Configura Python per l'ambiente Mozilla
-      - name: Set up Python
+      # 2. Python (Solo Linux/Mac)
+      - name: Set up Python (Linux/Mac)
+        if: matrix.os != 'windows-latest'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # 3. Scarica i veri MozillaBuild Tools per Windows dall'FTP ufficiale
+      # 3. Install MozillaBuild (Windows)
       - name: Install MozillaBuild (Windows)
         if: matrix.os == 'windows-latest'
         shell: powershell
@@ -45,64 +46,99 @@ jobs:
           Invoke-WebRequest -Uri "https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe" -OutFile "MozillaBuildSetup.exe"
           Start-Process -FilePath ".\MozillaBuildSetup.exe" -ArgumentList "/S" -Wait
 
-      # 4. Sistema il conflitto pyyaml prima del bootstrap
-      - name: Fix Python Dependencies
+      # 4. Fix PyYAML (SOLO Linux/Mac - Windows usa il suo Python isolato)
+      - name: Fix Python Dependencies (Linux/Mac)
+        if: matrix.os != 'windows-latest'
         shell: bash
-        working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
+        working-directory: browser-source
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install --force-reinstall pyyaml==6.0.3
 
-      # 5. Bootstrap: installa Rust, clang e le altre dipendenze necessarie a mach
+      # 5. Mach Bootstrap
       - name: Mach Bootstrap
         shell: bash
         working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            (yes || true) | /c/mozilla-build/start-shell.bat ./mach bootstrap --application-choice=browser --no-system-changes
+            (yes || true) | /c/mozilla-build/start-shell.bat "./mach bootstrap --application-choice=browser --no-system-changes"
           else
             yes 2>/dev/null | ./mach bootstrap --application-choice=browser --no-system-changes || true
           fi
 
-      # 6. Ottimizza le opzioni di compilazione (build completa, NIENTE artifact builds per ESR non recentissime)
+      # 5b. Install System Clang (Linux)
+      - name: Install System Clang (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld llvm
+
+      # 5c. Install System Clang (macOS)
+      - name: Install System Clang (macOS)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          brew install llvm lld
+          echo "LLVM_PATH=$(brew --prefix llvm)" >> $GITHUB_ENV
+
+      # 6. Configure Build (mozconfig)
       - name: Configure Build (mozconfig)
         shell: bash
         working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
         run: |
-          echo "ac_add_options --enable-release" > mozconfig
-          echo "ac_add_options --disable-tests" >> mozconfig
-          echo "ac_add_options --enable-project=browser" >> mozconfig
+          cat > mozconfig << EOF
+          ac_add_options --enable-release
+          ac_add_options --disable-tests
+          ac_add_options --enable-project=browser
+          ac_add_options --disable-bootstrap
+          EOF
 
-      # 6. Compila l'interfaccia e le modifiche del tuo fork
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            echo "ac_add_options --with-clang-path=$(which clang)" >> mozconfig
+            echo "ac_add_options --with-ld-path=$(which lld)" >> mozconfig
+            echo "export CC=$(which clang)" >> mozconfig
+            echo "export CXX=$(which clang++)" >> mozconfig
+          elif [ "${{ matrix.os }}" = "macos-latest" ]; then
+            echo "ac_add_options --with-clang-path=${{ env.LLVM_PATH }}/bin/clang" >> mozconfig
+            echo "ac_add_options --with-ld-path=${{ env.LLVM_PATH }}/bin/lld" >> mozconfig
+            echo "export CC=${{ env.LLVM_PATH }}/bin/clang" >> mozconfig
+            echo "export CXX=${{ env.LLVM_PATH }}/bin/clang++" >> mozconfig
+          fi
+          # Su Windows, MozillaBuild gestisce già il clang corretto internamente
+
+      # 7. Compile Browser (Rimosso 'exec' pericoloso su Windows)
       - name: Compile Browser
         shell: bash
         working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            exec /c/mozilla-build/start-shell.bat ./mach build
+            /c/mozilla-build/start-shell.bat "./mach build"
           else
             ./mach build
           fi
 
-      # 7. Impacchetta i file negli installer finali (.exe, .dmg, .deb)
+      # 8. Package (Rimosso 'exec' pericoloso su Windows)
       - name: Create Installer Package
         shell: bash
         working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            exec /c/mozilla-build/start-shell.bat ./mach package
+            /c/mozilla-build/start-shell.bat "./mach package"
           else
             ./mach package
           fi
 
-      # 8. Salva gli installer pronti da scaricare per ogni sistema operativo
+      # 9. Upload Installer
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Have-Browser-installer-${{ matrix.os }}
           path: |
-            C:/build-dir/**/dist/*.installer.exe
-            browser-source/**/dist/*.installer.exe
-            browser-source/**/dist/*.dmg
-            browser-source/**/dist/*.tar.bz2
-            browser-source/**/dist/*.deb
+            **/obj-*/dist/*.installer.exe
+            **/obj-*/dist/*.exe
+            **/obj-*/dist/*.dmg
+            **/obj-*/dist/*.tar.bz2
+            **/obj-*/dist/*.deb
+          if-no-files-found: error
+          retention-days: 5   
