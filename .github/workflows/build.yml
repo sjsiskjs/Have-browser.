@@ -1,6 +1,7 @@
 name: Build and Package Browser
 on:
   workflow_dispatch:
+
 jobs:
   build:
     name: Build on ${{ matrix.os }}
@@ -23,6 +24,7 @@ jobs:
           Get-PSDrive C | Select-Object Used,Free
 
       # 1. Scarica il codice del fork in una cartella personalizzata e pulita
+      #    (path assoluto su Windows per evitare il limite MAX_PATH durante la build)
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -40,30 +42,24 @@ jobs:
         shell: powershell
         working-directory: C:\build-dir
         run: |
-          Invoke-WebRequest -Uri "https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe" -OutFile "MozillaBuildSetup.exe"
+          Invoke-WebRequest -Uri "https://ftp.mozilla.org/pub/mozilla.org/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe" -OutFile "MozillaBuildSetup.exe"
           Start-Process -FilePath ".\MozillaBuildSetup.exe" -ArgumentList "/S" -Wait
 
       # 4. Sistema il conflitto pyyaml prima del bootstrap
+      #    NB: verifica che la versione pinnata esista ancora su PyPI al momento del run
       - name: Fix Python Dependencies
         shell: bash
         working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
         run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install --force-reinstall pyyaml==6.0.3
-
-      # 5. Bootstrap: installa Rust, clang e le altre dipendenze necessarie a mach
-      - name: Mach Bootstrap
-        shell: bash
-        working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
-        run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            # Corretto il passaggio dei comandi a start-shell.bat usando una stringa singola racchiusa
-            /c/mozilla-build/start-shell.bat -c "echo yes | ./mach bootstrap --application-choice=browser --no-system-changes"
+            PY=python
           else
-            yes 2>/dev/null | ./mach bootstrap --application-choice=browser --no-system-changes || true
+            PY=python3
           fi
+          $PY -m pip install --upgrade pip
+          $PY -m pip install --force-reinstall "pyyaml>=6.0,<7.0"
 
-      # 5b. Installa clang di sistema (Linux)
+      # 5a. Installa clang di sistema (Linux) - prima del bootstrap
       - name: Install System Clang (Linux)
         if: matrix.os == 'ubuntu-latest'
         shell: bash
@@ -71,15 +67,27 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang lld llvm
 
-      # 5c. Installa clang/lld aggiornati su macOS
+      # 5b. Installa clang/lld aggiornati su macOS - prima del bootstrap
       - name: Install System Clang (macOS)
         if: matrix.os == 'macos-latest'
         shell: bash
         run: |
           brew install llvm lld
-          echo "LLVM_PATH=$(brew --prefix llvm)" >> "$GITHUB_ENV"
 
-      # 6. Configura le opzioni di compilazione (CORRETTO: Rimosso il duplicato)
+      # 5c. Bootstrap: installa Rust e le altre dipendenze necessarie a mach
+      #     Su Windows invochiamo direttamente la bash di MozillaBuild con --login -c,
+      #     start-shell.bat non supporta l'esecuzione di un comando singolo.
+      - name: Mach Bootstrap
+        shell: bash
+        working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
+        run: |
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            C:/mozilla-build/msys/bin/bash.exe --login -c "cd /c/build-dir && (echo yes | ./mach bootstrap --application-choice=browser --no-system-changes || true)"
+          else
+            yes 2>/dev/null | ./mach bootstrap --application-choice=browser --no-system-changes || true
+          fi
+
+      # 6. Configura le opzioni di compilazione
       - name: Configure Build (mozconfig)
         shell: bash
         working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
@@ -87,40 +95,43 @@ jobs:
           echo "ac_add_options --enable-release" > mozconfig
           echo "ac_add_options --disable-tests" >> mozconfig
           echo "ac_add_options --enable-project=browser" >> mozconfig
+
           if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
             echo "ac_add_options --with-clang-path=$(which clang)" >> mozconfig
-            echo "ac_add_options --with-ld-path=$(which lld)" >> mozconfig
             echo "ac_add_options --disable-bootstrap" >> mozconfig
             echo "export CC=$(which clang)" >> mozconfig
             echo "export CXX=$(which clang++)" >> mozconfig
+            echo "export LDFLAGS=\"-fuse-ld=lld\"" >> mozconfig
           elif [ "${{ matrix.os }}" = "macos-latest" ]; then
-            echo "ac_add_options --with-clang-path=${LLVM_PATH}/bin/clang" >> mozconfig
+            LLVM_M_PATH=$(brew --prefix llvm)
+            echo "ac_add_options --with-clang-path=${LLVM_M_PATH}/bin/clang" >> mozconfig
             echo "ac_add_options --disable-bootstrap" >> mozconfig
           fi
 
-      # 6b. Compila il browser usando il flag -c per passare il comando a MozillaBuild
+      # 6b. Compila il browser
       - name: Compile Browser
         shell: bash
         working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            /c/mozilla-build/start-shell.bat -c "./mach build"
+            C:/mozilla-build/msys/bin/bash.exe --login -c "cd /c/build-dir && ./mach build"
           else
             ./mach build
           fi
 
-      # 7. Impacchetta i file in un installer sfruttando il flag -c
+      # 7. Impacchetta i file e genera il vero installer nativo
       - name: Create Installer Package
         shell: bash
         working-directory: ${{ matrix.os == 'windows-latest' && 'C:\build-dir' || 'browser-source' }}
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            /c/mozilla-build/start-shell.bat -c "./mach package"
+            C:/mozilla-build/msys/bin/bash.exe --login -c "cd /c/build-dir && ./mach package && ./mach build installer"
           else
             ./mach package
           fi
 
       # 7b. DIAGNOSTICA (Solo Windows): Sposta il file in una cartella radice fissa
+      #     Uso "throw" invece di Write-Error, così lo step fallisce davvero se manca l'installer.
       - name: Locate Windows Installer
         if: matrix.os == 'windows-latest'
         shell: powershell
@@ -131,10 +142,12 @@ jobs:
             New-Item -ItemType Directory -Path "C:\dist-out" -Force
             Copy-Item -Path $InstallerFile.FullName -Destination "C:\dist-out\browser-setup.exe"
           } else {
-            Write-Error "ERRORE: Nessun file .installer.exe generato da mach package!"
+            throw "ERRORE: Nessun file .installer.exe generato da mach package!"
           }
 
-      # 8. Salva gli installer pronti correggendo i percorsi di upload
+      # 8. Salva gli installer pronti
+      #    Rimosso il pattern *.deb: mach package non genera pacchetti .deb per Firefox,
+      #    quindi quel pattern non avrebbe mai trovato nulla. Su Linux si ottiene un .tar.bz2.
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -143,6 +156,4 @@ jobs:
             C:/dist-out/browser-setup.exe
             browser-source/**/obj-*/dist/*.dmg
             browser-source/**/obj-*/dist/*.tar.bz2
-            browser-source/**/obj-*/dist/*.deb
           if-no-files-found: warn
-
